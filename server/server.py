@@ -1,17 +1,13 @@
 from flask import Flask, jsonify, request, abort
 from flask_cors import CORS
+import json
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/api/groups', methods=['GET'])
-def get_groups():
-    """
-    Route to get all groups
-    return: Array of group objects
-    """
-    # TODO: (sample response below)
-    return jsonify([
+# Helper functions to read and write JSON files
+groups =[
         {
             "id": 1,
             "groupName": "Group 1",
@@ -19,10 +15,28 @@ def get_groups():
         },
         {
             "id": 2,
-            "groupName": "Group 2",
+            "groupName": "Group test",
             "members": [4, 5],
         },
-    ])
+    ]
+students =[
+        {"id": 1, "name": "Alice"},
+        {"id": 2, "name": "Bob"},
+        {"id": 3, "name": "Charlie"},
+        {"id": 4, "name": "David"},
+        {"id": 5, "name": "Eve"},
+    ]
+# File paths for groups and students JSON files
+#
+
+@app.route('/api/groups', methods=['GET'])
+def get_groups():
+    """
+    Route to get all groups
+    return: Array of group objects
+    """
+
+    return jsonify(groups)
 
 @app.route('/api/students', methods=['GET'])
 def get_students():
@@ -31,13 +45,8 @@ def get_students():
     return: Array of student objects
     """
     # TODO: (sample response below)
-    return jsonify([
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Charlie"},
-        {"id": 4, "name": "David"},
-        {"id": 5, "name": "Eve"},
-    ])
+ #   students = load_json_data(STUDENTS_FILE)
+    return jsonify(students)
 
 @app.route('/api/groups', methods=['POST'])
 def create_group():
@@ -49,17 +58,26 @@ def create_group():
     """
     
     # Getting the request body (DO NOT MODIFY)
+  #  groups = load_json_data(GROUPS_FILE)
     group_data = request.json
     group_name = group_data.get("groupName")
     group_members = group_data.get("members")
-    
-    # TODO: implement storage of a new group and return their info (sample response below)
 
-    return jsonify({
-        "id": 3,
-        "groupName": "New Group",
-        "members": [1, 2],
-    }), 201
+    group_members_id = []
+    for group_member in group_members:
+        for student in students:
+            if student["name"] == group_member:
+                group_members_id.append(student["id"])
+    # TODO: implement storage of a new group and return their info (sample response below)
+    new_group = {
+        "id": len(groups) + 1,
+        "groupName": group_name,
+        "members": group_members_id
+    }
+    groups.append(new_group)
+  #  save_json_data(GROUPS_FILE, groups)
+
+    return jsonify(new_group), 201
 
 @app.route('/api/groups/<int:group_id>', methods=['DELETE'])
 def delete_group(group_id):
@@ -68,8 +86,14 @@ def delete_group(group_id):
     param group_id: The ID of the group to delete
     return: Empty response with status code 204
     """
+  #  groups = load_json_data(GROUPS_FILE)
     # TODO: (delete the group with the specified id)
+    group = next((g for g in groups if g['id'] == group_id), None)
 
+    if group is None:
+        abort(404, "Group not found")
+
+ #   save_json_data(GROUPS_FILE, groups)
     return '', 204  # Return 204 (do not modify this line)
 
 @app.route('/api/groups/<int:group_id>', methods=['GET'])
@@ -80,18 +104,20 @@ def get_group(group_id):
     return: The group object with member details
     """
     # TODO: (sample response below)
-    return jsonify({
-        "id": 1,
-        "groupName": "Group 1",
-        "members": [
-            {"id": 1, "name": "Alice"},
-            {"id": 2, "name": "Bob"},
-            {"id": 3, "name": "Charlie"},
-        ],
-    })
-    # TODO:
-    # if group id isn't valid:
-    #     abort(404, "Group not found")
+  #  groups = load_json_data(GROUPS_FILE)
+    group = next((g for g in groups if g['id'] == group_id), None)
+    if group is None:
+        abort(404, "Group not found")
+    member_details = [s for s in students if s['id'] in group['members']]
+
+    group_with_details = {
+        "id": group['id'],
+        "groupName": group['groupName'],
+        "members": member_details
+    }
+    
+    return jsonify(group_with_details)
+
 
 if __name__ == '__main__':
     app.run(port=3902, debug=True)
